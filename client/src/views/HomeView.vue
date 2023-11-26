@@ -11,23 +11,31 @@ const shuffleArray = (array) => {
   return array
 }
 
-const nbrOfPlayers = 3
+const nbrOfPlayers = 4
 const nbrOfCards = 6
 const currentUserId = ref(0)
 const currentStoryteller = ref(0)
 const currentHint = ref(undefined)
 const gameState = ref('hint') // Can be "hint" "vote" or "results"
 
-const playerInfo = new Array()
-for (var idx = 0; idx < nbrOfPlayers; idx++) {
+const getRadomImageArray = (checkArray) => {
   const imagesArray = new Array()
   for (var i = 0; i < nbrOfCards; i++) {
-    const id = getRandomNumber(300)
+    let id = getRandomNumber(300)
+    while (imagesArray.indexOf(id) !== -1 || checkArray.indexOf(id) !== -1) {
+      id = getRandomNumber(300)
+    }
     imagesArray.push(id)
   }
+  return imagesArray
+}
+
+const playerInfo = new Array()
+for (var idx = 0; idx < nbrOfPlayers; idx++) {
+  
   playerInfo.push({
     id: idx,
-    images: imagesArray,
+    images: getRadomImageArray(playerInfo.map((p) => p.images).flat()),
     selected: undefined,
     vote: undefined,
     score: 0
@@ -82,14 +90,9 @@ const countScores = () => {
 
 const goToNextPlayer = () => {
   playerInfo.forEach((p) => {
-    const imagesArray = new Array()
-    for (var i = 0; i < nbrOfCards; i++) {
-      const id = getRandomNumber(300)
-      imagesArray.push(id)
-    }
     p.vote = undefined
     p.selected = undefined
-    p.images = imagesArray
+    p.images = getRadomImageArray(playerInfo.map((p) => p.images).flat())
   })
   currentStoryteller.value = (currentStoryteller.value + 1) % nbrOfPlayers
   currentUserId.value = currentStoryteller.value
@@ -112,9 +115,12 @@ const goToNextPlayer = () => {
     </ul>
 
     <template v-if="gameState == 'results'">
-      Vi har ett resultat!!
-      <button @click="goToNextPlayer()">Vidare</button>
+      <div class="footer">
+        <p class="hint">Vi har ett resultat!!</p>
+        <button @click="goToNextPlayer()">Vidare</button>
+      </div>
     </template>
+
     <template v-else v-for="player in players">
       <div v-if="currentUserId == player.id">
 
