@@ -11,8 +11,9 @@ const shuffleArray = (array) => {
   return array
 }
 
-const nbrOfPlayers = 4
+const nbrOfPlayers = 5
 const nbrOfCards = 6
+const endOfGameScore = 30
 const currentUserId = ref(0)
 const currentStoryteller = ref(0)
 const currentHint = ref(undefined)
@@ -43,7 +44,8 @@ for (var idx = 0; idx < nbrOfPlayers; idx++) {
     images: getRadomImages(nbrOfCards),
     selected: undefined,
     vote: undefined,
-    score: 0
+    score: 0,
+    isWinner: false
   })
 }
 const players = ref(playerInfo)
@@ -95,11 +97,15 @@ const countScores = () => {
 
 const goToNextPlayer = () => {
   playerInfo.forEach((p) => {
+    p.isWinner = p.score >= endOfGameScore
     p.images.splice(p.images.indexOf(p.selected), 1)
     p.images.push(getRadomImages(1))
     p.vote = undefined
     p.selected = undefined
   })
+  if (playerInfo.filter((p) => p.isWinner).length) {
+    return gameState.value = 'winner'
+  }
   currentStoryteller.value = (currentStoryteller.value + 1) % nbrOfPlayers
   currentUserId.value = currentStoryteller.value
   currentHint.value = ""
@@ -116,17 +122,20 @@ const goToNextPlayer = () => {
         :class="{active: currentUserId == player.id}">
         <span v-if="currentStoryteller == player.id">S&nbsp;</span> 
         Player {{ (player.id + 1) }}
+        <span v-if="player.isWinner">WINNER!!</span>
         <span class="score">{{ player.score }}</span>
       </li>
     </ul>
 
-    <template v-if="gameState == 'results'">
+    <template v-if="gameState == 'winner'">
+      <p class="hint">We have a winner!!</p>
+    </template>
+    <template v-else-if="gameState == 'results'">
       <div class="footer">
         <p class="hint">Vi har ett resultat!!</p>
         <button @click="goToNextPlayer()">Vidare</button>
       </div>
     </template>
-
     <template v-else v-for="player in players">
       <div v-if="currentUserId == player.id">
 
