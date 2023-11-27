@@ -17,17 +17,22 @@ const currentUserId = ref(0)
 const currentStoryteller = ref(0)
 const currentHint = ref(undefined)
 const gameState = ref('hint') // Can be "hint" "vote" or "results"
+const playedImages = new Array()
 
-const getRadomImageArray = (checkArray) => {
+const getRadomImages = (nbrOfImages) => {
   const imagesArray = new Array()
-  for (var i = 0; i < nbrOfCards; i++) {
+  for (var i = 0; i < nbrOfImages; i++) {
     let id = getRandomNumber(300)
-    while (imagesArray.indexOf(id) !== -1 || checkArray.indexOf(id) !== -1) {
+    while (
+      imagesArray.indexOf(id) !== -1 || 
+      playedImages.indexOf(id) !== -1
+      ) {
       id = getRandomNumber(300)
     }
+    playedImages.push(id)
     imagesArray.push(id)
   }
-  return imagesArray
+  return nbrOfImages===1?imagesArray[0]:imagesArray
 }
 
 const playerInfo = new Array()
@@ -35,7 +40,7 @@ for (var idx = 0; idx < nbrOfPlayers; idx++) {
   
   playerInfo.push({
     id: idx,
-    images: getRadomImageArray(playerInfo.map((p) => p.images).flat()),
+    images: getRadomImages(nbrOfCards),
     selected: undefined,
     vote: undefined,
     score: 0
@@ -90,9 +95,10 @@ const countScores = () => {
 
 const goToNextPlayer = () => {
   playerInfo.forEach((p) => {
+    p.images.splice(p.images.indexOf(p.selected), 1)
+    p.images.push(getRadomImages(1))
     p.vote = undefined
     p.selected = undefined
-    p.images = getRadomImageArray(playerInfo.map((p) => p.images).flat())
   })
   currentStoryteller.value = (currentStoryteller.value + 1) % nbrOfPlayers
   currentUserId.value = currentStoryteller.value
@@ -108,7 +114,7 @@ const goToNextPlayer = () => {
       <li 
         v-for="player in players"
         :class="{active: currentUserId == player.id}">
-        <span v-if="currentStoryteller == player.id">S</span> 
+        <span v-if="currentStoryteller == player.id">S&nbsp;</span> 
         Player {{ (player.id + 1) }}
         <span class="score">{{ player.score }}</span>
       </li>
