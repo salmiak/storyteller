@@ -1,6 +1,13 @@
 <script setup>
-// import TheWelcome from '../components/TheWelcome.vue'
+
 import { ref, computed } from 'vue'
+import { io } from "socket.io-client"
+
+const socket = io("http://localhost:3000");
+
+socket.emit("newPlayer", "Alfred", (response) => {
+  console.log(response);
+})
 
 const getRandomNumber = (max) => Math.floor(Math.random() * max)
 const shuffleArray = (array) => {
