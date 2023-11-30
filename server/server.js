@@ -29,7 +29,7 @@ let gameState = {
   nbrOfPlayers: 0,
   currentStoryteller: 0,
   currentHint: undefined,
-  gameState: 'hint', // Can be "hint" "vote" or "results"
+  gameState: 'new', // Can be "hint" "vote" or "results"
   playedImages: new Array(),
   players: new Array()
 };
@@ -63,11 +63,10 @@ io.on('connection', (socket) => {
       isWinner: false
     }
     callback({
-      playerInfo
+      id: playerInfo.id
     })
 
     gameState.players.push(playerInfo)
-    gameState.nbrOfPlayers++;
     io.emit("playersUpdate", gameState.players)
   })
 
