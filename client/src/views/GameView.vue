@@ -15,14 +15,10 @@ socket.emit("newPlayer", "Glenn", (response) => {
 
 const players = ref([])
 socket.on("playersUpdate", (incomingPlayers) => {
-    console.log('playersUpdate');
-    console.log(incomingPlayers);
     players.value.length = 0
-    console.log(players.value)
     incomingPlayers.forEach((player) => {
         players.value.push(player)
     })
-    console.log(players.value)
 })
 const gameState = ref('loading') // Can be "loading", "hint" "vote" or "results"
 const getImageSrc = ref((id) => 'https://picsum.photos/id/'+id+'/800/800')
@@ -44,7 +40,5 @@ const currentHint = ref(undefined)
           <span class="score">{{ player.score }}</span>
         </li>
       </ul>
-
-      {{ player.socketId }}
     </main>
 </template>
