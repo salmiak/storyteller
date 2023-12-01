@@ -35,6 +35,10 @@ const getImageSrc = ref((id) => 'https://picsum.photos/id/'+id+'/800/800')
 
 const currentHint = ref(undefined)
 
+// DEBUG AUTO PLAY:
+playerName.value = "John Doe"
+signInToGame()
+
 </script>
 
 <template>
