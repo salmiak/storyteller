@@ -6,20 +6,7 @@ import { io } from "socket.io-client"
 const socket = io("http://localhost:3000");
 
 const playerId = ref(null)
-const playerName = ref('')
-const playerNameValidation = ref(undefined)
-
-const signInToGame = () => {        // TODO: Add support for game rooms
-    if (!playerName.value) {
-        return playerNameValidation.value = "Du måste ange ett namn"
-    }
-    socket.emit("newPlayer", playerName.value, (response) => {
-        playerId.value = response.id
-    })
-}
-
 const players = ref([])
-
 socket.on("playersUpdate", (incomingPlayers) => {
     // reset list of players
     players.value.length = 0
@@ -28,16 +15,54 @@ socket.on("playersUpdate", (incomingPlayers) => {
     })
 })
 
+// SIGN IN
+const gameState = ref('login') // Can be "hint" "vote" or "results"
+const playerName = ref('')
+const playerNameValidation = ref(undefined)
 const currentPlayer = computed(() => players.value.find((p) => p.id === playerId.value))
+const signInToGame = () => {        // TODO: Add support for game rooms
+    if (!playerName.value) {
+        return playerNameValidation.value = "Du måste ange ett namn"
+    }
+    socket.emit("newPlayer", playerName.value, (response) => {
+        playerId.value = response.id
+    })
+    gameState.value = 'new'
+}
 
-const gameState = ref('hint') // Can be "hint" "vote" or "results"
+// START GAME
+const startGame = () => {
+    socket.emit("startGame")
+}
+socket.on('gameStart', (storytellerId) => {
+    gameState.value = 'hint'
+    players.value.find((p) => p.socketId === storytellerId).isStoryteller = true
+})
+
+// HINT
 const getImageSrc = ref((id) => 'https://picsum.photos/id/'+id+'/800/800')
-
 const currentHint = ref(undefined)
+const submitHint = () => {
+    socket.emit('setHint', currentHint.value)
+    submitSelectedImage()
+}
+socket.on('setHint', (hint) => {
+    currentHint.value = hint
+})
+const selectedImages = ref(undefined)
+const submitSelectedImage = () => {
+    socket.emit('selectedImage', currentPlayer.value.selected)
+    gameState.value = 'selected'
+}
+socket.on('setSelectedImages', (images) => {
+    selectedImages.value = images
+    gameState.value = 'vote'
+})
 
 // DEBUG AUTO PLAY:
-playerName.value = "John Doe"
-signInToGame()
+// playerName.value = "John Doe"
+// signInToGame()
+
 
 </script>
 
@@ -52,16 +77,20 @@ signInToGame()
         <li 
           v-for="player in players"
           :title="player.socketId">
+          <span v-if="player.isStoryteller">S&nbsp;</span>
           {{ player.id===playerId?'You':player.name }}
           <span v-if="player.isWinner">WINNER!!</span>
           <span class="score">{{ player.score }}</span>
         </li>
       </ul>
-      <p>Du heter: {{ currentPlayer.name }}</p>
+      <p>Du heter: {{ currentPlayer.name }} och just nu ska vi {{ gameState }}</p>
     </main>
 
+    <template v-if="gameState == 'new'">
+        <button @click="startGame()" :disabled="players.length < 3">Start the game</button>
+    </template>
 
-    <template v-if="gameState == 'hint'">
+    <template v-if="currentPlayer && gameState == 'hint'">
         <h2>Din hand</h2>
         <div class="image-container">
           <img 
@@ -71,19 +100,41 @@ signInToGame()
             @click="currentPlayer.selected=image"
             :class="{active: currentPlayer.selected==image}" />
         </div>
+
+        <div v-if="currentPlayer.isStoryteller" class="footer">
+          <template v-if="currentPlayer.selected">
+            <input placeholder="Skriv en ledtråd" v-model="currentHint"/>
+            <button :disabled="!currentHint" @click="submitHint()">Submit</button>
+          </template>
+          <p v-else class="hint">
+            Välj en bild att skriva en ledtråd till...
+          </p>
+        </div>
+        <div v-else class="footer">
+            <p class="hint">{{ currentHint || 'Waiting for hint…' }}</p>
+            <button :disabled="!currentPlayer.selected" @click="submitSelectedImage()">Submit</button>
+            <p v-if="currentHint" class="small">
+                Välj en bild för att komma vidare...
+            </p>
+        </div>
     </template>
 
-    <!--
     <template v-if="gameState == 'vote'">
-        <h2>Rösta på ett kort</h2>
-        <img 
-            v-for="image in selectedImages" 
-            :src="getImageSrc(image)" 
-            :id="'image-'+image" 
-            @click="(player.selected !== image) ? player.vote=image : undefined"
-            :class="{disabled: player.selected == image, active: player.vote==image}" />
+        <template v-if="selectedImages">
+            <h2>Rösta på ett kort</h2>
+            <div class="image-container">
+                <img 
+                    v-for="image in selectedImages" 
+                    :src="getImageSrc(image)" 
+                    :id="'image-'+image" 
+                    @click="currentPlayer.vote = image"
+                    :class="{disabled: currentPlayer.selected == image, active: currentPlayer.vote==image}" />
+            </div>
+            <button :disabled="!currentPlayer.vote" @click="submitVote()">Rösta</button>
+        </template>
+        <h2 v-else>Väntar på kort att rösta på</h2>
     </template>
-    -->
+
 
 </template>
 
