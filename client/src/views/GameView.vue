@@ -18,7 +18,7 @@ socket.on('updateGameState', (newState) => {
     gameState.value = newState
 })
 socket.on('updateStoryteller', (idOfStoryteller) => {
-    players.value.forEach((p) => { p.isStoryteller = (idOfStoryteller === p.socketId) })
+    players.value.forEach((p) => { p.isStoryteller = (idOfStoryteller === p.id) })
 })
 
 // SIGN IN
@@ -88,7 +88,7 @@ const nextSet = () => {
       <ul class="players">
         <li 
           v-for="player in players"
-          :title="player.socketId">
+          :title="player.id">
           <span v-if="player.isStoryteller">S&nbsp;</span>
           {{ player.id===playerId?'You':player.name }}
           <span v-if="player.isWinner">WINNER!!</span>

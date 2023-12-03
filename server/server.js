@@ -20,7 +20,6 @@ const nbrOfCards = 6
 const endOfGameScore = 30
 
 let gameState = {
-  nbrOfPlayers: 0,
   currentStoryteller: 0,
   currentHint: undefined,
   currentState: 'new', // Can be "hint" "vote" or "results"
@@ -37,8 +36,6 @@ const shuffleArray = (array) => {
   }
   return array
 }
-
-// Game utils
 const getRadomImages = (nbrOfImages) => {
   const outputImagesArray = new Array()
   for (var i = 0; i < nbrOfImages; i++) {
@@ -54,32 +51,17 @@ const getRadomImages = (nbrOfImages) => {
   }
   return nbrOfImages===1?outputImagesArray[0]:outputImagesArray
 }
-
-const getSocketPlayer = (socketId) => gameState.players.find((p) => p.socketId === socketId)
+const getSocketPlayer = (id) => gameState.players.find((p) => p.id === id)
 const getStoryteller = () => gameState.currentStoryteller?getSocketPlayer(gameState.currentStoryteller):undefined
 
-const nextStoryteller = () => {
-  if (!gameState.players.length) 
-    return
-  const currentStoryteller = gameState.players.find((p) => p.isStoryteller)
-  if (!currentStoryteller) {
-    gameState.players[0].isStoryteller = true
-  } else {
-    const socketIdArray = gameState.players.map((p) => p.socketId)
-    const indexOfNextStoryteller = (socketIdArray.indexOf(currentStoryteller.socketId) + 1) % gameState.players.length
-    gameState.players[indexOfNextStoryteller].isStoryteller = true
-    currentStoryteller.isStoryteller = false
-  }
-  io.emit("playersUpdate", gameState.players)
-}
-
+// Update and emit game states
 const setCurrentState = (newState) => {
   gameState.currentState = newState
   io.emit('updateGameState', newState)
 }
 const setCurrentStoryteller = (idOfStoryteller) => {
   gameState.currentStoryteller = idOfStoryteller
-  gameState.players.forEach((p) => { p.isStoryteller = (p.socketId === idOfStoryteller) })
+  gameState.players.forEach((p) => { p.isStoryteller = (p.id === idOfStoryteller) })
   io.emit('updateStoryteller', idOfStoryteller)
 }
 const setHint = (hint) => {
@@ -87,12 +69,12 @@ const setHint = (hint) => {
   io.emit('setHint', hint)
 }
 
+// Game states
 io.on('connection', (socket) => {
   socket.on('newPlayer', (playerName, callback) => {
 
     const playerInfo = {
-      id: uuid(),
-      socketId: socket.id,
+      id: socket.id,
       name: playerName,
       images: getRadomImages(nbrOfCards),
       selectedImage: undefined,
@@ -111,26 +93,20 @@ io.on('connection', (socket) => {
   })
 
   socket.on('disconnect', () => {
-    if (getSocketPlayer(socket.id) && getSocketPlayer(socket.id).isStoryteller) nextStoryteller()
-    gameState.players = gameState.players.filter((player) => player.socketId !== socket.id)
-    io.emit("playersUpdate", gameState.players)
+    console.log('Someone left the game...');
   })
 
   socket.on('startGame', () => {
     if (gameState.currentState === 'new') {
       setCurrentState('hint')
-      setCurrentStoryteller( gameState.players.map((p) => p.socketId)[0] )
+      setCurrentStoryteller( gameState.players.map((p) => p.id)[0] )
     }
   })
 
   socket.on('setHint', setHint)
 
   socket.on('selectedImage', (selectedImage) => {
-    // Update the current players info
-    const socketPlayer = getSocketPlayer(socket.id)
-    socketPlayer.selectedImage = selectedImage
-    // If it's the storyteller, they also vote on the same pic.
-    socketPlayer.vote = socketPlayer.isStoryteller?selectedImage:undefined
+    getSocketPlayer(socket.id).selectedImage = selectedImage
 
     // If all players has selected an image, broadcast all images in a random order
     if (gameState.players.filter((p) => p.selectedImage).length === gameState.players.length) {
@@ -142,14 +118,13 @@ io.on('connection', (socket) => {
   socket.on('vote', (image) => {
     getSocketPlayer(socket.id).vote = image
 
-    if (gameState.players.filter((p) => p.vote).length === gameState.players.length) {
-      // Calculate score additions
-
-      const votedImages = gameState.players.map((p) => p.vote)
+    // If everyone except the storyteller has voted.
+    if (gameState.players.filter((p) => p.vote).length === gameState.players.length - 1) {
+      const votedImages = gameState.players.filter((p) => !p.isStoryteller).map((p) => p.vote)
       const storytellersImage = getStoryteller().selectedImage
 
       if (votedImages.every( (img) => img === storytellersImage )) {
-        console.log('Alla röstade på berättarens bild');
+        // Everyone voted on the storyteller
         gameState.players.forEach((p) => { 
           if (!p.isStoryteller) {
             p.result = 2
@@ -157,17 +132,20 @@ io.on('connection', (socket) => {
           }
         })
       } else {
+        // Not everyone voted on storyteller
         gameState.players.filter((p) => !p.isStoryteller).forEach((p) => {
           if (p.vote === storytellersImage) {
+            // If correct vote, give points to player and storyteller
             p.result += 3
             p.score += 3
             getStoryteller().score += 3
             getStoryteller().result += 3
+          } else {
+            // Give points to all votes on non storyteller-image
+            const pointReceiver = gameState.players.find((a) => a.selectedImage === p.vote)
+            pointReceiver.score += 1
+            pointReceiver.result += 1
           }
-          votedImages.forEach((img) => {
-            p.score += img === p.selectedImage?1:0
-            p.result += img === p.selectedImage?1:0
-          })
         })
       }
 
@@ -187,7 +165,7 @@ io.on('connection', (socket) => {
     io.emit('playersUpdate', gameState.players)
     setHint('')
 
-    const playersIds = gameState.players.map((p) => p.socketId)
+    const playersIds = gameState.players.map((p) => p.id)
     setCurrentStoryteller(playersIds[(playersIds.indexOf(gameState.currentStoryteller) + 1) % playersIds.length])
     setCurrentState('hint')
   })
