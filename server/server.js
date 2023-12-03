@@ -98,7 +98,9 @@ io.on('connection', (socket) => {
   socket.on('startGame', () => {
     if (gameState.currentState === 'new') {
       gameState.currentState = 'hint'
-      io.emit('gameStart', gameState.players.map((p) => p.socketId)[0])
+      gameState.currentStoryteller = gameState.players.map((p) => p.socketId)[0]
+      getSocketPlayer(gameState.currentStoryteller).isStoryteller = true
+      io.emit('gameStart', gameState.currentStoryteller) // start game and send storyteller id
     }
   })
 
@@ -108,9 +110,28 @@ io.on('connection', (socket) => {
   })
 
   socket.on('selectedImage', (selectedImage) => {
-    getSocketPlayer(socket.id).selectedImage = selectedImage
+    // Update the current players info
+    const socketPlayer = getSocketPlayer(socket.id)
+    socketPlayer.selectedImage = selectedImage
+    socketPlayer.vote = socketPlayer.isStoryteller?selectedImage:undefined
+    
+    console.log(socketPlayer);
+
+    // If all players has selected an image, broadcast all images in a random order
     if (gameState.players.filter((p) => p.selectedImage).length === gameState.players.length) {
       io.emit('setSelectedImages', shuffleArray(gameState.players.map((p) => p.selectedImage)))
+    }
+  })
+
+  socket.on('vote', (image) => {
+    getSocketPlayer(socket.id).vote = image
+    if (gameState.players.filter((p) => p.vote).length === gameState.players.length) {
+      // Calculate score additions
+
+      gameState.players.forEach((p) => { p.score += 3 })
+
+      io.emit('score')
+      io.emit('playersUpdate', gameState.players)
     }
   })
 });

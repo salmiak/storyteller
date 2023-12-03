@@ -54,9 +54,19 @@ const submitSelectedImage = () => {
     socket.emit('selectedImage', currentPlayer.value.selected)
     gameState.value = 'selected'
 }
+
+// VOTE
 socket.on('setSelectedImages', (images) => {
     selectedImages.value = images
     gameState.value = 'vote'
+})
+const submitVote = () => {
+    socket.emit('vote', currentPlayer.value.vote)
+    gameState.value = "voted"
+}
+
+socket.on('score', () => {
+    gameState.value = 'score'
 })
 
 // DEBUG AUTO PLAY:
@@ -119,9 +129,9 @@ socket.on('setSelectedImages', (images) => {
         </div>
     </template>
 
-    <template v-if="gameState == 'vote'">
+    <template v-if="gameState == 'vote' || gameState == 'voted'">
         <template v-if="selectedImages">
-            <h2>Rösta på ett kort</h2>
+            <h2>Kort att rösta på</h2>
             <div class="image-container">
                 <img 
                     v-for="image in selectedImages" 
@@ -130,9 +140,14 @@ socket.on('setSelectedImages', (images) => {
                     @click="currentPlayer.vote = image"
                     :class="{disabled: currentPlayer.selected == image, active: currentPlayer.vote==image}" />
             </div>
-            <button :disabled="!currentPlayer.vote" @click="submitVote()">Rösta</button>
+            <button v-if="!currentPlayer.isStoryteller && gameState == 'vote'" :disabled="!currentPlayer.vote" @click="submitVote()">Rösta</button>
+            <div v-else>Vänta på att dina medspelare röstar...</div>
         </template>
         <h2 v-else>Väntar på kort att rösta på</h2>
+    </template>
+
+    <template v-if="gameState == 'score'">
+        <h2>Rasultat av omgång...</h2>
     </template>
 
 
