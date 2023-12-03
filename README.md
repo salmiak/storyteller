@@ -1,6 +1,6 @@
 
 
-Game states
+## Game states
 - Login: User is not yet logged in
 - New: User is logged in, but game has not yet started
 - Hint: Storyteller gives hint, other users selects cards
@@ -8,10 +8,11 @@ Game states
 - Score: Scores are presented to the users
 
 
+## ToDo
 
-[] Server (node + express) that handles and syncs states between clients
-[] Client (vue + pinia) displays the game for the users and communicates with the server
-[] Communication between server and client is socket.io
+[x] Server (node + express) that handles and syncs states between clients
+[x] Client (vue) displays the game for the users and communicates with the server
+[x] Communication between server and client is socket.io
 
 Preparations
     [x] All user receives 6 images

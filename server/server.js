@@ -17,7 +17,7 @@ const io = new Server(httpServer, {
 
 // Game constants
 const nbrOfCards = 6
-const endOfGameScore = 30
+const endOfGameScore = 10
 
 let gameState = {
   currentStoryteller: 0,
@@ -155,6 +155,15 @@ io.on('connection', (socket) => {
   })
 
   socket.on('nextSet', () => {
+
+    const winners = gameState.players.filter((p) => p.score >= endOfGameScore)
+    if (winners && winners.length) {
+      winners.forEach((p) => {p.isWinner = true})
+      io.emit('playersUpdate', gameState.players)
+      setCurrentState('winner')
+      return false;
+    }
+
     gameState.players.forEach((p) => {
       p.result = 0
       p.images = p.images.filter((img) => img !== p.selectedImage)
