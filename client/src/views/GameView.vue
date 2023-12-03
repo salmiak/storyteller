@@ -14,6 +14,12 @@ socket.on("playersUpdate", (incomingPlayers) => {
         players.value.push(player)
     })
 })
+socket.on('updateGameState', (newState) => {
+    gameState.value = newState
+})
+socket.on('updateStoryteller', (idOfStoryteller) => {
+    players.value.forEach((p) => { p.isStoryteller = (idOfStoryteller === p.socketId) })
+})
 
 // SIGN IN
 const gameState = ref('login') // Can be "hint" "vote" or "results"
@@ -34,14 +40,11 @@ const signInToGame = () => {        // TODO: Add support for game rooms
 const startGame = () => {
     socket.emit("startGame")
 }
-socket.on('gameStart', (storytellerId) => {
-    gameState.value = 'hint'
-    players.value.find((p) => p.socketId === storytellerId).isStoryteller = true
-})
 
 // HINT
 const getImageSrc = ref((id) => 'https://picsum.photos/id/'+id+'/800/800')
 const currentHint = ref(undefined)
+const selectedImages = ref(undefined)
 const submitHint = () => {
     socket.emit('setHint', currentHint.value)
     submitSelectedImage()
@@ -49,7 +52,6 @@ const submitHint = () => {
 socket.on('setHint', (hint) => {
     currentHint.value = hint
 })
-const selectedImages = ref(undefined)
 const submitSelectedImage = () => {
     socket.emit('selectedImage', currentPlayer.value.selected)
     gameState.value = 'selected'
@@ -58,7 +60,6 @@ const submitSelectedImage = () => {
 // VOTE
 socket.on('setSelectedImages', (images) => {
     selectedImages.value = images
-    gameState.value = 'vote'
 })
 const submitVote = () => {
     socket.emit('vote', currentPlayer.value.vote)
@@ -69,9 +70,10 @@ socket.on('score', () => {
     gameState.value = 'score'
 })
 
-// DEBUG AUTO PLAY:
-// playerName.value = "John Doe"
-// signInToGame()
+
+const nextSet = () => {
+    socket.emit('nextSet')
+}
 
 
 </script>
@@ -147,7 +149,14 @@ socket.on('score', () => {
     </template>
 
     <template v-if="gameState == 'score'">
-        <h2>Rasultat av omgång...</h2>
+        <h2>Resultat av omgång...</h2>
+        <ul>
+            <li v-for="player in players">
+                {{ player.name }} fick {{ player.result }} poäng.
+            </li>
+        </ul>
+
+        <button @click="nextSet()">Fortsätt spelet</button>
     </template>
 
 

@@ -1,3 +1,7 @@
+// TODO: Need to be better at syncing all changes on player data on server. 
+//       Server shall aways reflect state in clients.
+
+
 const express = require("express");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -52,6 +56,8 @@ const getRadomImages = (nbrOfImages) => {
 }
 
 const getSocketPlayer = (socketId) => gameState.players.find((p) => p.socketId === socketId)
+const getStoryteller = () => gameState.currentStoryteller?getSocketPlayer(gameState.currentStoryteller):undefined
+
 const nextStoryteller = () => {
   if (!gameState.players.length) 
     return
@@ -67,6 +73,20 @@ const nextStoryteller = () => {
   io.emit("playersUpdate", gameState.players)
 }
 
+const setCurrentState = (newState) => {
+  gameState.currentState = newState
+  io.emit('updateGameState', newState)
+}
+const setCurrentStoryteller = (idOfStoryteller) => {
+  gameState.currentStoryteller = idOfStoryteller
+  gameState.players.forEach((p) => { p.isStoryteller = (p.socketId === idOfStoryteller) })
+  io.emit('updateStoryteller', idOfStoryteller)
+}
+const setHint = (hint) => {
+  gameState.currentHint = hint
+  io.emit('setHint', hint)
+}
+
 io.on('connection', (socket) => {
   socket.on('newPlayer', (playerName, callback) => {
 
@@ -78,6 +98,7 @@ io.on('connection', (socket) => {
       selectedImage: undefined,
       vote: undefined,
       score: 0,
+      result: 0,
       isWinner: false,
       isStoryteller: false
     }
@@ -97,42 +118,78 @@ io.on('connection', (socket) => {
 
   socket.on('startGame', () => {
     if (gameState.currentState === 'new') {
-      gameState.currentState = 'hint'
-      gameState.currentStoryteller = gameState.players.map((p) => p.socketId)[0]
-      getSocketPlayer(gameState.currentStoryteller).isStoryteller = true
-      io.emit('gameStart', gameState.currentStoryteller) // start game and send storyteller id
+      setCurrentState('hint')
+      setCurrentStoryteller( gameState.players.map((p) => p.socketId)[0] )
     }
   })
 
-  socket.on('setHint', (hint) => {
-    gameState.currentHint = hint
-    io.emit('setHint', hint)
-  })
+  socket.on('setHint', setHint)
 
   socket.on('selectedImage', (selectedImage) => {
     // Update the current players info
     const socketPlayer = getSocketPlayer(socket.id)
     socketPlayer.selectedImage = selectedImage
+    // If it's the storyteller, they also vote on the same pic.
     socketPlayer.vote = socketPlayer.isStoryteller?selectedImage:undefined
-    
-    console.log(socketPlayer);
 
     // If all players has selected an image, broadcast all images in a random order
     if (gameState.players.filter((p) => p.selectedImage).length === gameState.players.length) {
       io.emit('setSelectedImages', shuffleArray(gameState.players.map((p) => p.selectedImage)))
+      setCurrentState('vote')
     }
   })
 
   socket.on('vote', (image) => {
     getSocketPlayer(socket.id).vote = image
+
     if (gameState.players.filter((p) => p.vote).length === gameState.players.length) {
       // Calculate score additions
 
-      gameState.players.forEach((p) => { p.score += 3 })
+      const votedImages = gameState.players.map((p) => p.vote)
+      const storytellersImage = getStoryteller().selectedImage
 
-      io.emit('score')
+      if (votedImages.every( (img) => img === storytellersImage )) {
+        console.log('Alla röstade på berättarens bild');
+        gameState.players.forEach((p) => { 
+          if (!p.isStoryteller) {
+            p.result = 2
+            p.score += 2
+          }
+        })
+      } else {
+        gameState.players.filter((p) => !p.isStoryteller).forEach((p) => {
+          if (p.vote === storytellersImage) {
+            p.result += 3
+            p.score += 3
+            getStoryteller().score += 3
+            getStoryteller().result += 3
+          }
+          votedImages.forEach((img) => {
+            p.score += img === p.selectedImage?1:0
+            p.result += img === p.selectedImage?1:0
+          })
+        })
+      }
+
+      setCurrentState('score')
       io.emit('playersUpdate', gameState.players)
     }
+  })
+
+  socket.on('nextSet', () => {
+    gameState.players.forEach((p) => {
+      p.result = 0
+      p.images = p.images.filter((img) => img !== p.selectedImage)
+      p.images.push(getRadomImages(1))
+      p.selectedImage = undefined
+      p.vote = undefined
+    })
+    io.emit('playersUpdate', gameState.players)
+    setHint('')
+
+    const playersIds = gameState.players.map((p) => p.socketId)
+    setCurrentStoryteller(playersIds[(playersIds.indexOf(gameState.currentStoryteller) + 1) % playersIds.length])
+    setCurrentState('hint')
   })
 });
 
