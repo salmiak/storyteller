@@ -9,6 +9,13 @@
 
 
 ## ToDo
+[] Add timeout for selecting and voting
+[] Improve state representation in UI
+[] Generate a bunch of images
+[] Serve images from server
+
+
+## Basics Flow
 
 [x] Server (node + express) that handles and syncs states between clients
 [x] Client (vue) displays the game for the users and communicates with the server
