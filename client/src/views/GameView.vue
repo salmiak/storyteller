@@ -99,7 +99,7 @@ const nextSet = () => {
             />
           </svg>
         </span>
-        {{ player.id === playerId ? 'You' : player.name }}
+        {{ player.id === playerId ? 'Du' : player.name }}
         <span v-if="player.isWinner">WINNER!!</span>
         <span class="score">{{ player.score }}</span>
       </li>

@@ -7,8 +7,11 @@
 }
 
 html {
-  --background-color: hotpink;
-  --foreground-color: darkblue;
+  /*--background-color: hotpink;
+  --foreground-color: darkblue;*/
+
+  --background-color: darkslategray;
+  --foreground-color: papayawhip;
 }
 
 body {
