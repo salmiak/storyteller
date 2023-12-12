@@ -3,6 +3,8 @@
 
 
 const express = require("express");
+const path = require("path");
+const fs = require('fs');
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { v4: uuid } = require('uuid');
@@ -14,6 +16,35 @@ const io = new Server(httpServer, {
     origin: ["http://localhost:5173"]
   }
 });
+
+// Define the path to your images folder
+const imagesFolderPath = path.join(__dirname, 'images'); // Adjust the folder structure as needed
+
+// Set up a route to handle image requests
+app.get('/images/:id.jpg', (req, res) => {
+  const { id } = req.params;
+  const imagePath = path.join(imagesFolderPath, `${id}.jpg`);
+
+  // Send the image file
+  res.sendFile(imagePath, (err) => {
+    if (err) {
+      // Handle errors, such as file not found
+      console.error(err);
+      res.status(404).send('Image not found');
+    }
+  });
+});
+
+const imagesArray = []
+
+fs.readdir(imagesFolderPath, (err, files) => {
+  if (err) {
+    return console.log('Error reading folder');
+  }
+  files.filter(file => path.extname(file).toLowerCase() === '.jpg').forEach(file => imagesArray.push(path.parse(file).name));
+  console.log(imagesArray);
+});
+
 
 // Game constants
 const nbrOfCards = 6
@@ -29,6 +60,10 @@ let gameState = {
 
 // Utils
 const getRandomNumber = (max) => Math.floor(Math.random() * max)
+const getRandomValueFromArray = (array) => {
+  const randomIndex = Math.floor(Math.random() * array.length);
+  return array[randomIndex];
+}
 const shuffleArray = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -39,15 +74,15 @@ const shuffleArray = (array) => {
 const getRadomImages = (nbrOfImages) => {
   const outputImagesArray = new Array()
   for (var i = 0; i < nbrOfImages; i++) {
-    let id = getRandomNumber(300)
+    let img = getRandomValueFromArray(imagesArray)
     while (
-      outputImagesArray.indexOf(id) !== -1 || 
-      gameState.playedImages.indexOf(id) !== -1
+      outputImagesArray.indexOf(img) !== -1 || 
+      gameState.playedImages.indexOf(img) !== -1
       ) {
-      id = getRandomNumber(300)
+      img = getRandomValueFromArray(imagesArray)
     }
-    gameState.playedImages.push(id)
-    outputImagesArray.push(id)
+    gameState.playedImages.push(img)
+    outputImagesArray.push(img)
   }
   return nbrOfImages===1?outputImagesArray[0]:outputImagesArray
 }

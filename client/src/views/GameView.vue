@@ -44,7 +44,7 @@ const startGame = () => {
 }
 
 // HINT
-const getImageSrc = ref((id) => 'https://picsum.photos/id/' + id + '/800/800')
+const getImageSrc = ref((id) => 'http://localhost:3000/images/' + id + '.jpg')
 const currentHint = ref(undefined)
 const selectedImages = ref(undefined)
 const submitHint = () => {
